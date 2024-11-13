@@ -10,6 +10,8 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Xaml.Behaviors;
+using Client.Builder;
+using Client.AbstractFactory;
 
 namespace Client
 {
@@ -22,59 +24,184 @@ namespace Client
             "Destroyer horizontal   3x1", "Battleship horizontal   4x1", "Cruiser vertical   1x1",
             "Submarine vertical   1x2", "Destroyer vertical   1x3", "Battleship vertical   1x4" };
 
+		private Board _myBoard;
+		private Board _enemyBoard;
+		private BoardBuilder _boardBuilder;
+		private BoardDirector _boardDirector;
+        private int boardChoice = 0;
+
         private Button[,] MyButtons = new Button[10, 10];
         private Button[,] EnemyButtons = new Button[10, 10];
 
         private HubConnection Connection;
         private GameClient Client;
 
+        private IThemeAbstractFactory _themeFactory;
+
+        private bool extraShotUsed = false;
+
         public MainWindow()
         {
             InitializeComponent();
-            InitializeUi();
+
+			SelectPowerButton.IsEnabled = false;
+			SelectedPowerText.IsEnabled = false;
+            
         }
+
+        private void SetTheme(string theme)
+        {
+            _themeFactory = theme == "Light" ? new LightThemeFactory() : new DarkThemeFactory();
+            ApplyTheme();
+        }
+
 
         /**
          * Private UI control methods
          */
         private void InitializeUi()
+		{
+			// Clear existing children from the MyBoard and EnemyBoard grids
+			MyBoard.Children.Clear();
+			EnemyBoard.Children.Clear();
+			MyBoard.RowDefinitions.Clear();
+			MyBoard.ColumnDefinitions.Clear();
+			EnemyBoard.RowDefinitions.Clear();
+			EnemyBoard.ColumnDefinitions.Clear();
+
+			// Set up MyBoard and EnemyBoard with dimensions based on _myBoard and _enemyBoard
+			for (int i = 0; i < _myBoard.Width + 1; i++)
+			{
+				MyBoard.ColumnDefinitions.Add(new ColumnDefinition());
+				EnemyBoard.ColumnDefinitions.Add(new ColumnDefinition());
+			}
+			for (int i = 0; i < _myBoard.Height + 1; i++)
+			{
+				MyBoard.RowDefinitions.Add(new RowDefinition());
+				EnemyBoard.RowDefinitions.Add(new RowDefinition());
+			}
+
+			// Add column and row labels for MyBoard
+			for (int i = 0; i < _myBoard.ColumnLabels.Count; i++)
+			{
+				var label = new Label
+				{
+					Content = _myBoard.ColumnLabels[i],
+					HorizontalAlignment = HorizontalAlignment.Center,
+					VerticalAlignment = VerticalAlignment.Center
+				};
+				Grid.SetRow(label, 0);
+				Grid.SetColumn(label, i + 1);
+				MyBoard.Children.Add(label);
+			}
+			for (int i = 0; i < _myBoard.RowLabels.Count; i++)
+			{
+				var label = new Label
+				{
+					Content = _myBoard.RowLabels[i],
+					HorizontalAlignment = HorizontalAlignment.Center,
+					VerticalAlignment = VerticalAlignment.Center
+				};
+				Grid.SetColumn(label, 0);
+				Grid.SetRow(label, i + 1);
+				MyBoard.Children.Add(label);
+			}
+
+			// Add column and row labels for EnemyBoard
+			for (int i = 0; i < _enemyBoard.ColumnLabels.Count; i++)
+			{
+				var label = new Label
+				{
+					Content = _enemyBoard.ColumnLabels[i],
+					HorizontalAlignment = HorizontalAlignment.Center,
+					VerticalAlignment = VerticalAlignment.Center
+				};
+				Grid.SetRow(label, 0);
+				Grid.SetColumn(label, i + 1);
+				EnemyBoard.Children.Add(label);
+			}
+			for (int i = 0; i < _enemyBoard.RowLabels.Count; i++)
+			{
+				var label = new Label
+				{
+					Content = _enemyBoard.RowLabels[i],
+					HorizontalAlignment = HorizontalAlignment.Center,
+					VerticalAlignment = VerticalAlignment.Center
+				};
+				Grid.SetColumn(label, 0);
+				Grid.SetRow(label, i + 1);
+				EnemyBoard.Children.Add(label);
+			}
+
+			// Initialize buttons for each cell in MyBoard and EnemyBoard
+			for (int y = 0; y < _myBoard.Height; y++)
+			{
+				for (int x = 0; x < _myBoard.Width; x++)
+				{
+					var myButton = CreateButton(true, x, y);
+					var enemyButton = CreateButton(false, x, y);
+
+					MyButtons[y, x] = myButton;
+					EnemyButtons[y, x] = enemyButton;
+
+					Grid.SetRow(myButton, y + 1);
+					Grid.SetColumn(myButton, x + 1);
+					MyBoard.Children.Add(myButton);
+
+					Grid.SetRow(enemyButton, y + 1);
+					Grid.SetColumn(enemyButton, x + 1);
+					EnemyBoard.Children.Add(enemyButton);
+				}
+			}
+
+			// Disable power selection UI initially
+			
+		}
+
+		private void ClearBoards()
         {
-            for (int y = 0; y < 10; y++)
-            {
-                for (int x = 0; x < 10; x++)
-                {
-                    var myButton = CreateButton(true, x, y);
-                    var enemyButton = CreateButton(false, x, y);
+			// Clear MyBoard
+			for (int y = 0; y < _myBoard.Height; y++)
+			{
+				for (int x = 0; x < _myBoard.Width; x++)
+				{
+					if (MyButtons[y, x] != null) // Check if the button exists
+					{
+						MyButtons[y, x].Content = "";       // Clear the content
+						MyButtons[y, x].IsEnabled = false;  // Disable the button
+					}
+				}
+			}
 
-                    MyButtons[y, x] = myButton;
-                    EnemyButtons[y, x] = enemyButton;
-
-                    Grid.SetRow(myButton, y + 1);
-                    Grid.SetColumn(myButton, x + 1);
-                    MyBoard.Children.Add(myButton);
-
-                    Grid.SetRow(enemyButton, y + 1);
-                    Grid.SetColumn(enemyButton, x + 1);
-                    EnemyBoard.Children.Add(enemyButton);
-                }
+			// Clear EnemyBoard
+			for (int y = 0; y < _enemyBoard.Height; y++)
+			{
+				for (int x = 0; x < _enemyBoard.Width; x++)
+				{
+					if (EnemyButtons[y, x] != null) // Check if the button exists
+					{
+						EnemyButtons[y, x].Content = "";       // Clear the content
+						EnemyButtons[y, x].IsEnabled = false;  // Disable the button
+					}
+				}
             }
         }
 
-        private void ClearBoards()
+        private void OnJoinBoard(int choice)
         {
-            for (int y = 0; y < 10; y++)
-            {
-                for (int x = 0; x < 10; x++)
-                {
-                    MyButtons[y, x].Content = "";
-                    MyButtons[y, x].IsEnabled = false;
+			_boardBuilder = new BoardBuilder();
+			_boardDirector = new BoardDirector(_boardBuilder);
 
-                    EnemyButtons[y, x].Content = "";
-                    MyButtons[y, x].IsEnabled = false;
-                }
-            }
+			_myBoard = _boardDirector.BuildRandomBoard(choice);
+			_enemyBoard = _boardDirector.BuildRandomBoard(choice);
+
+			// Dynamically set the button array sizes based on board dimensions
+			MyButtons = new Button[_myBoard.Height, _myBoard.Width];
+			EnemyButtons = new Button[_enemyBoard.Height, _enemyBoard.Width];
+
+            InitializeUi();
+            ApplyTheme();
         }
-
 
         private Button CreateButton(bool myBoard, int x, int y)
         {
@@ -133,6 +260,8 @@ namespace Client
             PlacementStrategyComboBox.IsEnabled = false;
             JoinButton.IsEnabled = false;
             MessageTextbox.IsEnabled = true;
+            SelectPowerButton.IsEnabled = true;
+            SelectedPowerText.IsEnabled = true;
 
             Client = new GameClient(SeatCombobox.SelectedIndex);
 
@@ -140,6 +269,7 @@ namespace Client
                 .WithUrl(@"http://localhost:4000/hubs/battleship")
                 .Build();
 
+            Connection.On<int>("SendBoardChoice", OnJoinBoard);
             Connection.On<bool>("JoinResult", OnJoinResult);
             Connection.On<string, string>("ChatMessage", OnChatMessage);
             Connection.On<bool, int, int, int, bool>("ShipSet", OnSetShipResult);
@@ -147,6 +277,9 @@ namespace Client
             Connection.On<int, bool, string>("PlayerReady", OnPlayerReady);
             Connection.On<int, int, int, bool>("ShotFired", OnShotFired);
             Connection.On<string>("GameWon", OnGameWon);
+            Connection.On<string>("SpecialPowerEnabled", OnSpecialPowerEnabled);
+            Connection.On("ExtraShotAllowed", OnExtraShotAllowed);
+            Connection.On<int, int, int, bool>("UnmarkShip", UnmarkShip);
 
             ComboBoxItem selectedItem = (ComboBoxItem)PlacementStrategyComboBox.SelectedItem;
             string placementStrategy = selectedItem.Content.ToString();
@@ -248,6 +381,7 @@ namespace Client
             {
                 Client.State = GameState.Started;
 
+                extraShotUsed = false;
                 MessagesListbox.Items.Add("Game started. Player 1's turn.");
 
                 EnableMyBoard(false);
@@ -288,6 +422,10 @@ namespace Client
             if(success)
             {
                 MessagesListbox.Items.Add("Player " + nickname + " ready");
+                if (seat == Client.Seat)
+                {
+                    Undo.IsEnabled = false;
+                }
             }
             else
             {
@@ -315,6 +453,7 @@ namespace Client
                 Client.ChangeTurn();
             }
 
+            // Enable or disable enemy board based on whose turn it is
             EnableEnemyBoard(Client.Turn == Client.Seat);
         }
 
@@ -330,5 +469,99 @@ namespace Client
 
             Client.State = GameState.Stopped;
         }
+        private async void SelectPowerButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (PowerSelectionComboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                string powerType = selectedItem.Content.ToString();
+
+                // Send selected power to the server for activation
+                await Connection.SendAsync("EnableSpecialPower", Client.Seat, powerType);
+
+            }
+            else
+            {
+                MessageBox.Show("Please select a power before confirming.");
+            }
+        }
+        private void OnSpecialPowerEnabled(string powerType)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"Special Power '{powerType}' enabled!");
+                SelectedPowerText.Text = $"Selected Power: {powerType}";
+            });
+        }
+        private void OnExtraShotAllowed()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Client.ChangeTurn();
+                EnableEnemyBoard(Client.Turn == Client.Seat);
+
+            });
+        }
+        private async void UndoAction(object sender, RoutedEventArgs e)
+        {
+            await Connection.SendAsync("Undo", Client.Seat);
+
+        }
+        private void UnmarkShip(int x, int y, int size, bool vertical)
+        {
+            if (vertical)
+            {
+                for (int i = y; i < y + size; i++)
+                {
+                    MyButtons[i, x].Content = "";
+                }
+            }
+            else
+            {
+                for (int i = x; i < x + size; i++)
+                {
+                    MyButtons[y, i].Content = "";
+                }
+            }
+
+            EnableMyBoard(true);
+        }
+
+        private void ThemeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ThemeSelector.SelectedItem is ComboBoxItem selectedItem)
+            {
+                SetTheme(selectedItem.Content.ToString());
+            }
+        }
+
+        private void ApplyTheme()
+        {
+            if (_themeFactory == null) return;
+
+            var buttonStyle = _themeFactory.CreateButtonStyle();
+            var gridStyle = _themeFactory.CreateGridStyle();
+
+            // Apply general UI button styles
+            buttonStyle.ApplyStyle(ActionButton);
+            buttonStyle.ApplyStyle(JoinButton);
+            buttonStyle.ApplyStyle(SelectPowerButton);
+            buttonStyle.ApplyStyle(Undo);
+
+            // Apply grid background style
+            gridStyle.ApplyGridBackground(MyBoard);
+            gridStyle.ApplyGridBackground(EnemyBoard);
+
+            // Apply style to grid buttons in MyButtons and EnemyButtons
+            foreach (Button button in MyButtons)
+            {
+                if (button != null) gridStyle.ApplyGridButtonStyle(button);
+            }
+
+            foreach (Button button in EnemyButtons)
+            {
+                if (button != null) gridStyle.ApplyGridButtonStyle(button);
+            }
+        }
+
     }
 }

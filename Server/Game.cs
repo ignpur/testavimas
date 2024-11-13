@@ -1,20 +1,35 @@
 ﻿using Server.Strategy.ShipPlacement;
+using Server;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Server.AbstractFactory;
+using System.Numerics;
+using Server.Decorator;
+using Server.Command;
+using Server.Observer;
+using System.Xml.Serialization;
 
 namespace Server
 {
-    public class Game
+    public class Game : ISubject
     {
         public GameState State;
-        public Player[] Players { get; private set; }
+        public IPlayer[] Players { get; private set; }
         public int Turn { get; private set; }
+        private CommandInvoker[] Invokers;
+		    private int choice = 0;
 
-        public Game()
+
+        //Observer needed 
+        private GameData gameData = new GameData();
+        private List<IObserver> observers = new List<IObserver>();
+        
+		    public Game()
         {
-            Players = new Player[2];
+            Players = new IPlayer[2];
+            Invokers = new CommandInvoker[2];
         }
 
         public void Initialize()
@@ -44,14 +59,30 @@ namespace Server
             if (seat != 0 && seat != 1) return false;
             if (Players[seat] != null) return false;
             if (State != GameState.NotStarted) return false;
-
-            var player = new Player(name, strategy);
+            IPlayer player;
+            if (seat == 0){
+                player = new PlayerOne(name, strategy);
+            }
+            else{
+                player = new PlayerTwo(name, strategy);
+            }
+            
+            player.SetBoardSize(choice);
              
             Players[seat] = player;
+            Invokers[seat] = new CommandInvoker();
 
             return true;
         }
-
+        public int setBoardChoice()
+        {
+			if (choice == 0)
+			{
+				Random _random = new Random();
+				choice = _random.Next(1, 4);
+			}
+            return choice;
+        }
         /// <summary>
         /// Removes player from the game and initializes all the fields
         /// </summary>
@@ -83,8 +114,6 @@ namespace Server
             if (player != 0 && player != 1) return false;
             if (Players[player] == null) return false;
 
-
-
             return Players[player].ReadyUp();
         }
 
@@ -106,7 +135,10 @@ namespace Server
             //var ship = Ship.GetShipBySize(size);
             //if (ship == Ship.None) return false;
 
-            return Players[player].PlaceShips(size, x, y, vertical);
+            IResultCommand<ShipHelper> command = new PlaceShipCommand(Players[player], size, x, y, vertical);
+            Invokers[player].ExecuteCommand(command);
+            
+            return command.GetResults();
         }
 
         /// <summary>
@@ -119,21 +151,24 @@ namespace Server
         /// false if the parameters were incorrect
         /// true otherwise
         /// </returns>
-        public bool Fire(int attacker, int x, int y)
+        public Shot Fire(int attacker, int x, int y)
         {
-            if (attacker != 0 && attacker != 1) return false;
-            if (State != GameState.Started) return false;
-            if (Turn != attacker) return false;
+            if (attacker != 0 && attacker != 1) return new Shot(x, y, false);
+            if (State != GameState.Started) return new Shot(x, y, false);
+            if (Turn != attacker) return new Shot(x, y, false);
 
-
-            var result = Players[1 - attacker].HandleIncomingFire(x, y);
-
-            if (!result)
+            var shot = Players[1 - attacker].HandleIncomingFire(x, y);
+            gameData.StatusMessage = $"Player {attacker} fired at ({x}, {y}): " + (shot.result ? "Hit" : "Miss");
+            Notify();
+            if ((!shot.result && Players[attacker] is ExtraShotDecorator extraShotPlayer && !extraShotPlayer.IsExtraShotAvailable())
+                || (!shot.result && !(Players[attacker] is ExtraShotDecorator)))
             {
                 Turn = 1 - Turn;
             }
 
-            return result;
+            ////Notify();
+
+            return shot;
         }
 
         public bool AreBothPlayersConnected()
@@ -143,7 +178,7 @@ namespace Server
 
         public bool AreBothPlayersReady()
         {
-            return Players[0]?.Ready == true && Players[1]?.Ready == true;
+            return Players[0]?.getReady() == true && Players[1]?.getReady() == true;
         }
 
         /// <summary>
@@ -161,5 +196,36 @@ namespace Server
             if (Players[1 - player].HasEnabledShips()) return 0;
             return 1;
         }
+        public ICommand CheckLastCommand(int player)
+        {
+            return Invokers[player].CheckLast();
+        }
+        public void Undo(int player)
+        {
+            Invokers[player].Undo();
+        }
+
+
+        ///OBSERVER CLASSES
+        public void Attach(IObserver observer)
+        {
+            if (!observers.Contains(observer))
+                observers.Add(observer);
+        }
+
+        public void Detach(IObserver observer)
+        {
+            observers.Remove(observer);
+        }
+
+        public void Notify()
+        {
+            foreach (var observer in observers)
+            {
+                observer.Update(gameData);
+            }
+        }
+        //////END OF OBSVER CODE
+
     }
 }

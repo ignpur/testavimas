@@ -1,96 +1,74 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using Server.Strategy.ShipPlacement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Server.Decorator;
+using Server.Command;
+using Server.Facade;
+using Server.Observer;
+using System.Xml.Linq;
 
 namespace Server
 {
     public class GameHub : Hub
     {
         private static Game CurrentGame = new Game();
+		//private static BoardConfiguration _sharedBoardConfiguration;
+		private readonly GameFacade _gameFacade;
 
-        public async Task Join(string nickname, int seat, string placementStrategy)
+		public GameHub(GameFacade gameFacade)
+		{
+			_gameFacade = gameFacade;
+		}
+
+		public async Task Join(string nickname, int seat, string placementStrategy)
         {
-            IShipPlacementStrategy strategy;
-            if (placementStrategy == "Random Placement")
-            {
-                strategy = new RandomShipPlacementStrategy();
-            }
-            else if (placementStrategy == "Mixed Placement")
-            {
-                strategy = new MixedShipPlacementStrategy();
-            }
-            else
-            {
-                strategy = new ManualShipPlacementStrategy();
-            }
-            var result = CurrentGame.JoinPlayer(nickname, seat, strategy);
-            await Clients.Caller.SendAsync("JoinResult", result);
+			await _gameFacade.SetBoardChoiceAsync(Context.ConnectionId);
+			await _gameFacade.JoinPlayerAsync(nickname, seat, placementStrategy);
+		}
 
-
-            if (CurrentGame.AreBothPlayersConnected())
-            {
-                CurrentGame.State = GameState.ArrangingShips;
-                await Clients.All.SendAsync("GameState", "ArrangingShips");
-                
-            }
-        }
-
-        public async Task Disconnect(int player)
+        public Task Disconnect(int player)
         {
-            if (CurrentGame.DisconnectPlayer(player))
-            {
-                await Clients.All.SendAsync("GameState", "NotStarted");
-            }
-        }
+			return _gameFacade.DisconnectPlayerAsync(player);
+		}
 
-        public async Task SetShip(int player, int size, int x, int y, bool vertical)
+        public Task SetShip(int player, int size, int x, int y, bool vertical)
         {
 
-            ShipHelper result = CurrentGame.SetShip(player, size, x, y, vertical);
+			return _gameFacade.SetShipAsync(player, size, x, y, vertical, Context.ConnectionId);
+		}
 
-
-            await Clients.Caller.SendAsync("ShipSet", result.result, result.posX, result.posY, result.size, result.vertical);
-        }
-
-        public async Task ReadyUp(int player)
+        public Task ReadyUp(int player)
         {
-            var result = CurrentGame.ReadyUp(player);
+			return _gameFacade.ReadyUpAsync(player);
+		}
 
-            await Clients.All.SendAsync("PlayerReady", player, result, CurrentGame.Players[player].Name);
-            
-
-            if (CurrentGame.AreBothPlayersReady())
-            {
-                CurrentGame.Start();
-                await Clients.All.SendAsync("GameState", "Started");
-            }
-        }
-
-        public async Task Fire(int attacker, int x, int y)
+        public Task Fire(int attacker, int x, int y)
         {
-            var result = CurrentGame.Fire(attacker, x, y);
+			return _gameFacade.HandleFireAsync(attacker, x, y);
 
-            await Clients.All.SendAsync("ShotFired", attacker, x, y, result);
+		}
 
-            if (CurrentGame.CheckWin(attacker) == 1)
-            {
-                await Clients.All.SendAsync("GameWon", CurrentGame.Players[attacker].Name);
-                return;
-            }
-        }
-
-        public async Task ChatMessage(int seat, string message)
+        public Task ChatMessage(int seat, string message)
         {
-            if (seat != 0 && seat != 1) return;
+			return _gameFacade.SendChatMessageAsync(seat, message);
+		}
+        public Task EnableSpecialPower(int seat, string powerType)
+        {
+			return _gameFacade.EnableSpecialPowerAsync(seat, powerType, Context.ConnectionId);
+		}
 
-            var player = CurrentGame.Players[seat];
-            if (player == null) return;
+        public Task Undo(int seat)
+        {
+			return _gameFacade.UndoAsync(seat, Context.ConnectionId);
+		}
+		public Task UpdateAsync(GameData gameData)
+		{
+			return _gameFacade.UpdateAsync(gameData);
+		}
 
-            await Clients.All.SendAsync("ChatMessage", player.Name, message);
-        }
-    }
+	}
 }

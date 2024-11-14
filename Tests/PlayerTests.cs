@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Server.AbstractFactory;
 using System.Reflection;
 using Server.Strategy.ShipPlacement;
 
@@ -27,8 +26,8 @@ namespace Tests
         [Test]
         public void GetName_ReturnsCorrectName()
         {
-            Assert.AreEqual("Player1", _playerOne.getName(), "Expected name for PlayerOne is 'Player1'.");
-            Assert.AreEqual("Player2", _playerTwo.getName(), "Expected name for PlayerTwo is 'Player2'.");
+            Assert.That(_playerOne.getName(), Is.EqualTo("Player1"), "Expected name for PlayerOne is 'Player1'.");
+            Assert.That(_playerTwo.getName(), Is.EqualTo("Player2"), "Expected name for PlayerTwo is 'Player2'.");
         }
 
         [Test]

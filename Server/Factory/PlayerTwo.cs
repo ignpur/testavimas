@@ -69,10 +69,10 @@ namespace Server.AbstractFactory
 		public bool ReadyUp()
 		{
 			// TODO: refactor this method so it looks clearer
-			Ready = (ArrangedShipsCount[0] == 4)
-				&& (ArrangedShipsCount[1] == 3)
-				&& (ArrangedShipsCount[2] == 2)
-				&& (ArrangedShipsCount[3] == 1);
+			Ready = (ArrangedShipsCount[0] == 5)
+				&& (ArrangedShipsCount[1] == 4)
+				&& (ArrangedShipsCount[2] == 3)
+				&& (ArrangedShipsCount[3] == 2);
 
 			return Ready;
 		}
@@ -103,7 +103,7 @@ namespace Server.AbstractFactory
 
 			var size = shipAbstract.Size;
 			if (!ValidatePlacement(x, y, size, vertical)) return false;
-			if (ArrangedShipsCount[size - 1] == 5 - size) return false;
+			if (ArrangedShipsCount[size - 1] == 5 - size + 1) return false;
 
 			if (vertical)
 			{

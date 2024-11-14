@@ -1,15 +1,18 @@
-/*using Server;
+using Server;
 using Server.Strategy.ShipPlacement;
 using Server.AbstractFactory;
+using Server.Prototype;
 namespace Tests
 {
-    public class Tests
+    [TestFixture]
+    internal class ManualShipPlacementTests
     {
         private PlayerOne _player;
         [SetUp]
         public void Setup()
         {
             _player = new PlayerOne("TestPlayer", new ManualShipPlacementStrategy());
+            _player.SetBoardSize(1); //Set board size of 10x10
         }
 
         [Test]
@@ -28,7 +31,7 @@ namespace Tests
             Assert.IsTrue(result.result, "The ship should be placed successfully.");
             for (int i = x; i < x + size; i++)
             {
-                Assert.AreEqual(Ship.GetShipBySize(size), _player.Board[y, i], "The board should have the ship placed horizontally.");
+                Assert.IsTrue(_player.Board[y, i].IsValid(), "The board should have the ship placed horizontally.");
             }
         }
         
@@ -52,13 +55,13 @@ namespace Tests
         public void TestShipPlacement_Overlap_ShouldFailToPlaceShip()
         {
             // Arrange: Place the first ship
-            _player.PlaceShips(Ship.GetShipBySize(3), 0, 0, false);
+            _player.PlaceShips(3, 0, 0, false);
 
             // Act: Attempt to place another ship overlapping the first one
-            ShipHelper result = _player.PlaceShips(Ship.GetShipBySize(2), 0, 0, true);
+            ShipHelper result = _player.PlaceShips(2, 0, 0, true);
 
             // Assert
             Assert.IsFalse(result.result, "The ship placement should fail due to overlap.");
         }
 	}
-}*/
+}

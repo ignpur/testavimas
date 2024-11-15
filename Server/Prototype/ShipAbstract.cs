@@ -10,18 +10,18 @@ namespace Server.Prototype
 		public byte Symbol { get; protected set; }
 		public int IsHit = 0;
 
-		public void MarkAsHit() // done
+		public void MarkAsHit()
         {
             IsHit++;
         }
 
         // Checks if the ship has been hit
-        public bool CheckIfSunk() // done
+        public bool CheckIfSunk()
         {
             return Size==IsHit;
         }
 
-		public bool IsValid() // done
+		public bool IsValid()
 		{
 			return !string.IsNullOrEmpty(Name) && Size > 0 && Symbol > 0;
 		}

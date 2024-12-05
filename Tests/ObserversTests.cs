@@ -94,16 +94,16 @@ namespace Tests
             Assert.IsTrue(_observer2.UpdateCalled, "Observer2 should receive update after Notify.");
 
             // Verify the GameData in each observer
-            Assert.AreEqual("Player1", _observer1.ReceivedGameData.CurrentPlayer);
-            Assert.AreEqual("Test Fire Notification", _observer1.ReceivedGameData.StatusMessage);
-            Assert.AreEqual(1, _observer1.ReceivedGameData.RecentMoves.Count);
-            Assert.AreEqual(5, _observer1.ReceivedGameData.RecentMoves[0].X);
-            Assert.AreEqual(3, _observer1.ReceivedGameData.RecentMoves[0].Y);
-            Assert.AreEqual(true, _observer1.ReceivedGameData.RecentMoves[0].Hit);
+            Assert.That(_observer1.ReceivedGameData.CurrentPlayer, Is.EqualTo("Player1"));
+            Assert.That(_observer1.ReceivedGameData.StatusMessage, Is.EqualTo("Test Fire Notification"));
+            Assert.That(_observer1.ReceivedGameData.RecentMoves.Count, Is.EqualTo(1));
+            Assert.That(_observer1.ReceivedGameData.RecentMoves[0].X, Is.EqualTo(5));
+            Assert.That(_observer1.ReceivedGameData.RecentMoves[0].Y, Is.EqualTo(3));
+            Assert.That(_observer1.ReceivedGameData.RecentMoves[0].Hit, Is.EqualTo(true));
 
             // Repeat for Observer2
-            Assert.AreEqual("Player1", _observer2.ReceivedGameData.CurrentPlayer);
-            Assert.AreEqual("Test Fire Notification", _observer2.ReceivedGameData.StatusMessage);
+            Assert.That(_observer2.ReceivedGameData.CurrentPlayer, Is.EqualTo("Player1"));
+            Assert.That(_observer2.ReceivedGameData.StatusMessage, Is.EqualTo("Test Fire Notification"));
         }
     }
 }

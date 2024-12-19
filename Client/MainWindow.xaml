@@ -8,6 +8,10 @@
         Title="Client" Height="482" Width="1232" ResizeMode="CanMinimize">
 
     <Grid Margin="0,0,0,-6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="0*"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="346*"/>
             <ColumnDefinition Width="346*"/>
@@ -16,42 +20,44 @@
         </Grid.ColumnDefinitions>
 
         <!-- This Grid for MyBoard will be rendered dynamically in MainWindow.xaml.cs -->
-        <Grid x:Name="MyBoard" HorizontalAlignment="Center" Width="300" Margin="0,61,0,25" />
+        <Grid x:Name="MyBoard" HorizontalAlignment="Center" Width="300" Margin="0,61,0,25" Grid.Row="1" />
 
         <!-- This Grid for EnemyBoard will also be rendered dynamically in MainWindow.xaml.cs -->
-        <Grid x:Name="EnemyBoard" HorizontalAlignment="Center" Width="300" Margin="0,61,0,25" Grid.Column="1" />
+        <Grid x:Name="EnemyBoard" HorizontalAlignment="Center" Width="300" Margin="0,61,0,25" Grid.Column="1" Grid.Row="1" />
 
-        <TextBox x:Name="NicknameTextbox" Grid.Column="2" HorizontalAlignment="Left" Margin="8,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="127" Height="22" Text="Player"/>
-        <TextBox x:Name="MessageTextbox" Grid.Column="2" Margin="10,377,15,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False" KeyDown="SendChatMessage" Height="18" Grid.ColumnSpan="2">
+        <TextBox x:Name="NicknameTextbox" Grid.Column="2" HorizontalAlignment="Left" Margin="8,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="127" Height="22" Text="Player" Grid.Row="1"/>
+        <TextBox x:Name="MessageTextbox" Grid.Column="2" Margin="10,377,15,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False" KeyDown="SendChatMessage" Height="18" Grid.ColumnSpan="2" Grid.Row="1">
             <!-- Style omitted for brevity -->
         </TextBox>
-        <ListBox x:Name="MessagesListbox" Grid.Column="2" Margin="8,37,8,100" Grid.ColumnSpan="2"/>
-        <Button x:Name="ActionButton" Content="Ready" Grid.Column="2" Margin="8,412,16,0" VerticalAlignment="Top" Click="HandleAction" IsEnabled="False" Height="20" Grid.ColumnSpan="2"/>
-        <ComboBox x:Name="SeatCombobox" Grid.Column="3" HorizontalAlignment="Right" Margin="0,9,42,0" VerticalAlignment="Top" Width="82" Height="22">
+        <ListBox x:Name="MessagesListbox" Grid.Column="2" Margin="8,37,8,100" Grid.ColumnSpan="2" Grid.Row="1"/>
+        <Button x:Name="ActionButton" Content="Ready" Grid.Column="2" Margin="8,412,16,0" VerticalAlignment="Top" Click="HandleAction" IsEnabled="False" Height="20" Grid.ColumnSpan="2" Grid.Row="1"/>
+        <ComboBox x:Name="SeatCombobox" Grid.Column="3" HorizontalAlignment="Right" Margin="0,9,42,0" VerticalAlignment="Top" Width="82" Height="22" Grid.Row="1">
             <ComboBoxItem Content="Player 1" IsSelected="True"/>
             <ComboBoxItem Content="Player 2"/>
         </ComboBox>
-        <ComboBox x:Name="PlacementStrategyComboBox" Grid.Column="2" HorizontalAlignment="Left" Margin="140,9,0,0" VerticalAlignment="Top" Width="150" Height="22">
+        <ComboBox x:Name="PlacementStrategyComboBox" Grid.Column="2" HorizontalAlignment="Left" Margin="140,9,0,0" VerticalAlignment="Top" Width="150" Height="22" Grid.Row="1">
             <ComboBoxItem Content="Manual Placement" IsSelected="True"/>
             <ComboBoxItem Content="Mixed Placement"/>
             <ComboBoxItem Content="Random Placement"/>
         </ComboBox>
-        <Button x:Name="JoinButton" Content="Join" Grid.Column="3" HorizontalAlignment="Right" Margin="0,9,10,0" VerticalAlignment="Top" Height="22" Click="HandleJoin" Width="25"/>
-        <Label Content="# - placed ship       X - hit ship       O - missed field" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Bottom" Height="26" Width="275"/>
-        <ComboBox x:Name="PowerSelectionComboBox" Grid.Column="0" HorizontalAlignment="Left" Margin="49,10,0,0" VerticalAlignment="Top" Width="150" Height="22">
+        <Button x:Name="JoinButton" Content="Join" Grid.Column="3" HorizontalAlignment="Right" Margin="0,9,10,0" VerticalAlignment="Top" Height="22" Click="HandleJoin" Width="25" Grid.Row="1"/>
+        <Label Content="# - placed ship       X - hit ship       O - missed field" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Bottom" Height="26" Width="275" Grid.Row="1"/>
+        <ComboBox x:Name="PowerSelectionComboBox" Grid.Column="0" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="150" Height="22" Grid.Row="1">
             <ComboBoxItem Content="Extra Shot"/>
             <ComboBoxItem Content="Auto Dodge"/>
         </ComboBox>
 
 
-        <TextBlock x:Name="SelectedPowerText" Text="Selected Power: None" FontWeight="Bold" Margin="49,37,50,0" Grid.Column="0" VerticalAlignment="Top"/>
-        <Button x:Name="SelectPowerButton" Content="Select Power" HorizontalAlignment="Right" Margin="0,10,113,0" VerticalAlignment="Top" Height="22" Click="SelectPowerButton_Click" Width="82" RenderTransformOrigin="-0.133,0.456"/>
-        <Button x:Name="Undo" Content="Undo" HorizontalAlignment="Right" Margin="0,10,26,0" VerticalAlignment="Top" Height="22" Click="UndoAction" Width="82" RenderTransformOrigin="-0.133,0.456"/>
+        <TextBlock x:Name="SelectedPowerText" Text="Selected Power: None" FontWeight="Bold" Margin="10,39,89,0" Grid.Column="0" VerticalAlignment="Top" Grid.Row="1"/>
+        <Button x:Name="SelectPowerButton" Content="Select Power" HorizontalAlignment="Right" Margin="0,10,152,0" VerticalAlignment="Top" Height="22" Click="SelectPowerButton_Click" Width="82" RenderTransformOrigin="-0.133,0.456" Grid.Row="1"/>
+        <Button x:Name="Undo" Content="Undo" HorizontalAlignment="Right" Margin="0,10,61,0" VerticalAlignment="Top" Height="22" Click="UndoAction" Width="82" RenderTransformOrigin="-0.133,0.456" Grid.Row="1"/>
 
 
-        <ComboBox x:Name="ThemeSelector" SelectionChanged="ThemeSelector_SelectionChanged" Width="100" Margin="11,9,136,0" VerticalAlignment="Top" Height="22" Grid.Column="3" Visibility="Visible">
+        <ComboBox x:Name="ThemeSelector" SelectionChanged="ThemeSelector_SelectionChanged" Width="100" Margin="11,9,136,0" VerticalAlignment="Top" Height="22" Grid.Column="3" Visibility="Visible" Grid.Row="1">
             <ComboBoxItem Content="Light" IsSelected="True"/>
             <ComboBoxItem Content="Dark" />
         </ComboBox>
+        <Button x:Name="SaveState" Content="Save" HorizontalAlignment="Right" Margin="0,10,304,0" VerticalAlignment="Top" Height="22" Click="SaveState_Click" Width="82" RenderTransformOrigin="-0.133,0.456" Grid.Row="1" Grid.ColumnSpan="2"/>
+        <Button x:Name="RestoreState" Content="Restore" HorizontalAlignment="Right" Margin="0,10,217,0" VerticalAlignment="Top" Height="22" Click="RestoreState_Click" Width="82" RenderTransformOrigin="-0.133,0.456" Grid.Row="1" Grid.Column="1"/>
     </Grid>
 </Window>

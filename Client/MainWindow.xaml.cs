@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Xaml.Behaviors;
 using Client.Builder;
 using Client.AbstractFactory;
+using Client.GameStates;
+using System.Numerics;
+
 
 namespace Client
 {
@@ -34,19 +37,83 @@ namespace Client
         private Button[,] EnemyButtons = new Button[10, 10];
 
         private HubConnection Connection;
-        private GameClient Client;
+        public GameClient Client;
+        private LobbyWindow _lobbyWindow;
+        private string _currentGameId;
 
         private IThemeAbstractFactory _themeFactory;
 
-        private bool extraShotUsed = false;
+        public bool extraShotUsed = false;
 
         public MainWindow()
         {
             InitializeComponent();
-
+            InitializeConnection();
+	        ShowLobbyWindow();
 			SelectPowerButton.IsEnabled = false;
 			SelectedPowerText.IsEnabled = false;
             
+        }
+        
+        private void InitializeConnection()
+		{
+			Connection = new HubConnectionBuilder()
+			    .WithUrl(@"http://localhost:4000/hubs/battleship")
+			    .Build();
+			
+			Connection.On<int>("SendBoardChoice", OnJoinBoard);
+			Connection.On<bool>("JoinResult", OnJoinResult);
+			Connection.On<string, string>("ChatMessage", OnChatMessage);
+			Connection.On<bool, int, int, int, bool>("ShipSet", OnSetShipResult);
+			Connection.On<string>("GameState", OnGameStateChanged);
+			Connection.On<int, bool, string>("PlayerReady", OnPlayerReady);
+			Connection.On<int, int, int, bool>("ShotFired", OnShotFired);
+			Connection.On<string>("GameWon", OnGameWon);
+			Connection.On<string>("SpecialPowerEnabled", OnSpecialPowerEnabled);
+			Connection.On("ExtraShotAllowed", OnExtraShotAllowed);
+			Connection.On<int, int, int, bool>("UnmarkShip", UnmarkShip);
+			Connection.On<string>("GameCreated", OnGameCreated);
+            Connection.On<List<List<bool>>>("BoardStateUpdated", OnBoardStateUpdate);
+            Connection.On("StateSaved", OnStateSaved);
+
+
+            Connection.StartAsync();
+		}
+
+        private void OnBoardStateUpdate(List<List<bool>> list)
+        {
+            MessageBox.Show($"Board Update reached front");
+            UpdateBoardUI(list);
+        }
+
+        private void UpdateBoardUI(List<List<bool>> boardState)
+        {
+            MessageBox.Show($"Updating board");
+
+            for (int y = 0; y < boardState.Count; y++)
+            {
+                for (int x = 0; x < boardState[y].Count; x++)
+                {
+                    MyButtons[y, x].Content = boardState[y][x] ? "#" : ""; // Update UI
+                    //MyButtons[y, x].IsEnabled = !boardState[y][x]; // Disable if occupied
+                }
+            }
+            EnableMyBoard(true);
+        }
+
+
+        private void ShowLobbyWindow()
+        {
+	        _lobbyWindow = new LobbyWindow(Connection);
+	        _lobbyWindow.GameJoined += OnGameJoined;
+	        _lobbyWindow.Show();
+	        this.Hide();
+        }
+        
+        private void OnGameJoined(object sender, EventArgs e)
+        {
+	        _currentGameId = ((GameJoinedEventArgs)e).GameId;
+	        this.Show();
         }
 
         private void SetTheme(string theme)
@@ -158,7 +225,7 @@ namespace Client
 			
 		}
 
-		private void ClearBoards()
+		public void ClearBoards()
         {
 			// Clear MyBoard
 			for (int y = 0; y < _myBoard.Height; y++)
@@ -230,7 +297,7 @@ namespace Client
             return b;
         }
 
-        private void EnableMyBoard(bool enable)
+        public void EnableMyBoard(bool enable)
         {
             foreach (Button b in MyButtons)
             {
@@ -239,7 +306,7 @@ namespace Client
             }
         }
 
-        private void EnableEnemyBoard(bool enable)
+        public void EnableEnemyBoard(bool enable)
         {
             foreach (Button b in EnemyButtons)
             {
@@ -265,27 +332,27 @@ namespace Client
 
             Client = new GameClient(SeatCombobox.SelectedIndex);
 
-            Connection = new HubConnectionBuilder()
-                .WithUrl(@"http://localhost:4000/hubs/battleship")
-                .Build();
-
-            Connection.On<int>("SendBoardChoice", OnJoinBoard);
-            Connection.On<bool>("JoinResult", OnJoinResult);
-            Connection.On<string, string>("ChatMessage", OnChatMessage);
-            Connection.On<bool, int, int, int, bool>("ShipSet", OnSetShipResult);
-            Connection.On<string>("GameState", OnGameStateChanged);
-            Connection.On<int, bool, string>("PlayerReady", OnPlayerReady);
-            Connection.On<int, int, int, bool>("ShotFired", OnShotFired);
-            Connection.On<string>("GameWon", OnGameWon);
-            Connection.On<string>("SpecialPowerEnabled", OnSpecialPowerEnabled);
-            Connection.On("ExtraShotAllowed", OnExtraShotAllowed);
-            Connection.On<int, int, int, bool>("UnmarkShip", UnmarkShip);
+            // Connection = new HubConnectionBuilder()
+            //     .WithUrl(@"http://localhost:4000/hubs/battleship")
+            //     .Build();
+            //
+            // Connection.On<int>("SendBoardChoice", OnJoinBoard);
+            // Connection.On<bool>("JoinResult", OnJoinResult);
+            // Connection.On<string, string>("ChatMessage", OnChatMessage);
+            // Connection.On<bool, int, int, int, bool>("ShipSet", OnSetShipResult);
+            // Connection.On<string>("GameState", OnGameStateChanged);
+            // Connection.On<int, bool, string>("PlayerReady", OnPlayerReady);
+            // Connection.On<int, int, int, bool>("ShotFired", OnShotFired);
+            // Connection.On<string>("GameWon", OnGameWon);
+            // Connection.On<string>("SpecialPowerEnabled", OnSpecialPowerEnabled);
+            // Connection.On("ExtraShotAllowed", OnExtraShotAllowed);
+            // Connection.On<int, int, int, bool>("UnmarkShip", UnmarkShip);
 
             ComboBoxItem selectedItem = (ComboBoxItem)PlacementStrategyComboBox.SelectedItem;
             string placementStrategy = selectedItem.Content.ToString();
-
-            Connection.StartAsync();
-            Connection.SendAsync("Join", NicknameTextbox.Text, Client.Seat, placementStrategy);
+             
+            //Connection.StartAsync();
+            Connection.SendAsync("Join", _currentGameId, NicknameTextbox.Text, Client.Seat, placementStrategy);
         }
 
         private void HandleShipArrangement(object sender, RoutedEventArgs e)
@@ -297,7 +364,7 @@ namespace Client
             int size = tag[2];
             bool vertical = tag[3] == 1;
 
-            Connection.SendAsync("SetShip", Client.Seat, size, x, y, vertical);
+            Connection.SendAsync("SetShip", _currentGameId, Client.Seat, size, x, y, vertical);
             EnableMyBoard(false);
         }
 
@@ -313,16 +380,16 @@ namespace Client
             int x = tag[0];
             int y = tag[1];
 
-            Connection.SendAsync("Fire", Client.Seat, x, y);
+            Connection.SendAsync("Fire", _currentGameId, Client.Seat, x, y);
             EnableEnemyBoard(false);
         }
 
         private void HandleAction(object sender, RoutedEventArgs e)
         {
-            if (Client.State == GameState.ArrangingShips)
+            if (Client.CurrentState is ArrangingShipsState)
             {
                 EnableMyBoard(false);
-                Connection.SendAsync("ReadyUp", Client.Seat);
+                Connection.SendAsync("ReadyUp", _currentGameId, Client.Seat);
             }
 
             ActionButton.IsEnabled = false;
@@ -333,7 +400,7 @@ namespace Client
             if (e.Key != Key.Enter) return;
             if (MessageTextbox.Text.Length == 0) return;
 
-            Connection.SendAsync("ChatMessage", Client.Seat, MessageTextbox.Text);
+            Connection.SendAsync("ChatMessage", _currentGameId, Client.Seat, MessageTextbox.Text);
             MessageTextbox.Text = "";
         }
 
@@ -360,34 +427,29 @@ namespace Client
 
         private void OnGameStateChanged(string newState)
         {
+            IGameState newStateInstance = null;
+
             if (newState == "NotStarted")
             {
-                Client.State = GameState.Stopped;
-                ClearBoards();
-                // Disable the UI completely except chat
+                newStateInstance = new StoppedState();
             }
             else if (newState == "ArrangingShips")
             {
-                Client.State = GameState.ArrangingShips;
-
-                MessagesListbox.Items.Add("Both players connected. It’s time to place the ships.");
-                ActionButton.Content = "Ready";
-                ActionButton.IsEnabled = true;
-
-                EnableMyBoard(true);
-                EnableEnemyBoard(false);
+                newStateInstance = new ArrangingShipsState();
             }
             else if (newState == "Started")
             {
-                Client.State = GameState.Started;
+                newStateInstance = new StartedState();
+            }
 
-                extraShotUsed = false;
-                MessagesListbox.Items.Add("Game started. Player 1's turn.");
-
-                EnableMyBoard(false);
-                EnableEnemyBoard(Client.Turn == Client.Seat);
+            if (newStateInstance != null)
+            {
+                Client.SetState(newStateInstance);
+                newStateInstance.ApplyUI(this); // Call the new ApplyUI method
             }
         }
+
+
 
         private void OnChatMessage(string nickname, string message)
         {
@@ -467,7 +529,7 @@ namespace Client
             ActionButton.Content = "Finish";
             ActionButton.IsEnabled = true;
 
-            Client.State = GameState.Stopped;
+            Client.SetState(new StoppedState());
         }
         private async void SelectPowerButton_Click(object sender, RoutedEventArgs e)
         {
@@ -476,7 +538,7 @@ namespace Client
                 string powerType = selectedItem.Content.ToString();
 
                 // Send selected power to the server for activation
-                await Connection.SendAsync("EnableSpecialPower", Client.Seat, powerType);
+                await Connection.SendAsync("EnableSpecialPower", _currentGameId, Client.Seat, powerType);
 
             }
             else
@@ -492,6 +554,13 @@ namespace Client
                 SelectedPowerText.Text = $"Selected Power: {powerType}";
             });
         }
+        private void OnStateSaved()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"Board saved!");
+            });
+        }
         private void OnExtraShotAllowed()
         {
             Dispatcher.Invoke(() =>
@@ -503,7 +572,7 @@ namespace Client
         }
         private async void UndoAction(object sender, RoutedEventArgs e)
         {
-            await Connection.SendAsync("Undo", Client.Seat);
+            await Connection.SendAsync("Undo", _currentGameId, Client.Seat);
 
         }
         private void UnmarkShip(int x, int y, int size, bool vertical)
@@ -561,6 +630,21 @@ namespace Client
             {
                 if (button != null) gridStyle.ApplyGridButtonStyle(button);
             }
+        }
+        
+        private void OnGameCreated(string gameId)
+		{
+			
+			_lobbyWindow.AddGame(gameId);
+		}
+        private async void SaveState_Click(object sender, RoutedEventArgs e)
+        {
+            await Connection.SendAsync("SavePlayerState", _currentGameId, Client.Seat);
+        }
+
+        private async void RestoreState_Click(object sender, RoutedEventArgs e)
+        {
+            await Connection.SendAsync("RestorePlayerState", _currentGameId, Client.Seat);
         }
 
     }

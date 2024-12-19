@@ -9,6 +9,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Server.Adapter;
+using Server.Bridge;
+using Server.Proxy;
 
 namespace Server
 {
@@ -21,10 +24,23 @@ namespace Server
             services.AddSignalR();
 
 			services.AddSingleton<Game>();
+            
+            services.AddSingleton<ConsoleLogger>();
+            services.AddSingleton(new FileLogger("logs/game_log.txt"));
+            
+            services.AddSingleton(provider =>
+                new PlayerActionLogger(provider.GetRequiredService<ConsoleLogger>()));
+            services.AddSingleton(provider =>
+                new GameEventLogger(provider.GetRequiredService<FileLogger>()));
+            
+            services.AddSingleton(provider =>
+                new LoggerAdapter(provider.GetRequiredService<PlayerActionLogger>()));
+            services.AddSingleton(provider =>
+                new LoggerAdapter(provider.GetRequiredService<GameEventLogger>()));
 
 			services.AddScoped<GameFacade>(provider =>
 			{
-				var game = provider.GetService<Game>();
+				var game = provider.GetService<IGame>();
 				var hubContext = provider.GetRequiredService<IHubContext<GameHub>>();
 				return new GameFacade(game, hubContext);
 			});

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Server.AbstractFactory;
+using Server.Memento;
 using Server.Prototype;
 using Server.Strategy.ShipPlacement;
 
@@ -34,6 +35,10 @@ namespace Server.Decorator
         public ShipAbstract[,] GetBoard() => _decoratedPlayer.GetBoard();
         public void DecrementShipCount(int size) => _decoratedPlayer.DecrementShipCount(size);
 
-		public void SetBoardSize(int choice) => _decoratedPlayer.SetBoardSize(choice);
-	}
+        public void SetBoardSize(int choice) => _decoratedPlayer.SetBoardSize(choice);
+
+        public ShipPlacementMemento SaveState() => _decoratedPlayer.SaveState();
+        public void RestoreState(ShipPlacementMemento memento) => _decoratedPlayer.RestoreState(memento);
+        public List<List<bool>> GetBoardUI() => _decoratedPlayer.GetBoardUI();
+    }
 }

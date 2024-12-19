@@ -18,7 +18,7 @@ namespace Server.Strategy.ShipPlacement
             int randomSize = 0;
             bool randomVertical = false;
             int timeOutCounter = 0;
-            while (!placed && timeOutCounter < 12000)
+            while (!placed && timeOutCounter < 20)
             {
                 timeOutCounter++;
                 randomX = _random.Next(0, player.GetBoard().GetLength(0));
@@ -46,7 +46,7 @@ namespace Server.Strategy.ShipPlacement
 				var ship = shipAbstract.Symbol;
                 placed = player.SetShip(ship, randomX, randomY, randomVertical);
             }
-            Console.WriteLine("Placed ship at {0}, {1}, vertical: {2}, size: {3}, counter: {4}", randomX, randomY, randomVertical, randomSize, timeOutCounter);
+            //Console.WriteLine("Placed ship at {0}, {1}, vertical: {2}, size: {3}, counter: {4}", randomX, randomY, randomVertical, randomSize, timeOutCounter);
 
             return new ShipHelper(placed, randomSize, randomX, randomY, randomVertical);
         }

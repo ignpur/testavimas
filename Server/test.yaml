@@ -1,0 +1,17 @@
+config:
+  target: 'http://localhost:4000'
+  phases:
+    - duration: 300  # Test for 5 minutes
+      arrivalRate: 1000  # 1000 users per second
+scenarios:
+  - flow:
+      - post:
+          url: '/hubs/battleship/negotiate'
+          json: {}
+      - post:
+          url: '/join'
+          json:
+            gameId: 'test-game'
+            nickname: '{{ $randomUserName }}'
+            seat: 0
+            placementStrategy: 'Random Placement'

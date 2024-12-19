@@ -10,17 +10,21 @@ using Server.Decorator;
 using Server.Command;
 using Server.Observer;
 using System.Xml.Serialization;
+using Server.Memento;
+using Server.Prototype;
+using Server.Proxy;
 
 namespace Server
 {
-    public class Game : ISubject
+    public class Game : IGame
     {
-        public GameState State;
-        public IPlayer[] Players { get; private set; }
-        public int Turn { get; private set; }
-        private CommandInvoker[] Invokers;
-		    private int choice = 0;
+        public GameState State { get; set; }
+        public IPlayer[] Players { get; set; }
+        public int Turn { get; set; }
 
+        private CommandInvoker[] Invokers;
+		private int choice = 0;
+        private readonly ShipPlacementCaretaker[] caretakers = { new ShipPlacementCaretaker(), new ShipPlacementCaretaker() };
 
         //Observer needed 
         private GameData gameData = new GameData();
@@ -158,6 +162,7 @@ namespace Server
             if (Turn != attacker) return new Shot(x, y, false);
 
             var shot = Players[1 - attacker].HandleIncomingFire(x, y);
+            //Console.WriteLine("Shot fired");
             gameData.StatusMessage = $"Player {attacker} fired at ({x}, {y}): " + (shot.result ? "Hit" : "Miss");
             Notify();
             if ((!shot.result && Players[attacker] is ExtraShotDecorator extraShotPlayer && !extraShotPlayer.IsExtraShotAvailable())
@@ -227,5 +232,22 @@ namespace Server
         }
         //////END OF OBSVER CODE
 
+        public void SavePlayerState(int player)
+        {
+            if (player < 0 || player > 1) return;
+            var playerState = Players[player]?.SaveState();
+            if (playerState != null)
+                caretakers[player].Save(playerState);
+        }
+        public List<List<bool>> RestorePlayerState(int player)
+        {
+            if (player < 0 || player > 1) return null;
+            var memento = caretakers[player].Restore();
+            if (memento != null)
+                Players[player]?.RestoreState(memento);
+
+            return Players[player].GetBoardUI();
+        }
     }
 }
+

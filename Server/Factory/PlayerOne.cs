@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Reflection.Metadata.Ecma335;
 using Server.Prototype;
+using Server.Iterator;
+using Server.Memento;
 
 namespace Server.AbstractFactory
 {
@@ -81,7 +83,7 @@ namespace Server.AbstractFactory
             return Ready;
         }
 
-        public bool SetShip(byte ship, int x, int y, bool vertical)
+        public bool SetShip(byte ship, int startX, int startY, bool vertical)
         {
             ShipAbstract shipAbstract = null;
             switch (ship)
@@ -102,29 +104,30 @@ namespace Server.AbstractFactory
                     break;
             }
 
-            if (!IsPositionInBounds(x, y)) return false;
             if (shipAbstract == null) return false;
 
-            var size = shipAbstract.Size;
-            if (!ValidatePlacement(x, y, size, vertical)) return false;
-            if (ArrangedShipsCount[size - 1] == 5 - size) return false;
+			var size = shipAbstract.Size;
 
-            if (vertical)
-            {
-                for (int i = y; i < y + size; i++)
-                {
-                    Board[i, x] = shipAbstract;
-                }
-            }
-            else
-            {
-                for (int i = x; i < x + size; i++)
-                {
-                    Board[y, i] = shipAbstract;
-                }
-            }
+			var iterator = new BoardIterator(startX, startY, size, vertical);
 
-            ArrangedShipsCount[size - 1]++;
+			if (ArrangedShipsCount[size - 1] == 5 - size) return false;
+
+			if (!ValidatePlacement(startX, startY, size, vertical))
+			{
+				//Console.WriteLine("Invalid placement: ship doesn't fit or overlaps.");
+				return false;
+			}
+
+
+			// Reset the iterator and place the ship
+			iterator = new BoardIterator(startX, startY, shipAbstract.Size, vertical);
+			while (iterator.HasNext())
+			{
+				var (x, y) = iterator.Next();
+				Board[y, x] = shipAbstract;
+			}
+
+			ArrangedShipsCount[size - 1]++;
             return true;
         }
 
@@ -192,6 +195,37 @@ namespace Server.AbstractFactory
 
             return true;
         }
+        public ShipPlacementMemento SaveState()
+        {
+            return new ShipPlacementMemento(Board, ArrangedShipsCount);
+        }
+
+
+        public void RestoreState(ShipPlacementMemento memento)
+        {
+            // Restore the board state
+            Board = memento.BoardState.Clone() as ShipAbstract[,];
+
+            // Restore the arranged ships count
+            ArrangedShipsCount = (int[])memento.ArrangedShipsCount.Clone();
+        }
+
+
+        public List<List<bool>> GetBoardUI()
+        {
+            var boardState = new List<List<bool>>();
+            for (int y = 0; y < Board.GetLength(0); y++)
+            {
+                var row = new List<bool>();
+                for (int x = 0; x < Board.GetLength(1); x++)
+                {
+                    row.Add(Board[y, x] != null); // true for ship, false for empty
+                }
+                boardState.Add(row);
+            }
+            return boardState;
+        }
+
         public ShipAbstract[,] GetBoard() => Board;
 
         public void DecrementShipCount(int size) => ArrangedShipsCount[size-1]--;
